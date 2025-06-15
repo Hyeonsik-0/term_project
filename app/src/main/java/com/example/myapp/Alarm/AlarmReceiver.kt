@@ -11,11 +11,11 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.example.myapp.R
 import com.example.myapp.model.AppDatabase
+import com.example.myapp.model.RoutineEntity
 import com.example.myapp.model.Weekday
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 import java.time.LocalTime
 import java.util.Calendar
 
@@ -25,57 +25,50 @@ class AlarmReceiver : BroadcastReceiver() {
         val routineId = intent.getIntExtra("ROUTINE_ID", 0)
         if (routineId == 0) return
 
-        // 1. goAsync()를 호출하여 PendingResult 객체를 받음
-        val pendingResult: PendingResult = goAsync()
-
         CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val db = AppDatabase.getInstance(context)
-                val today = LocalDate.now()
+            // AppDatabase.getInstance(context)를 사용하여 DB 인스턴스를 가져옵니다.
+            val db = AppDatabase.getInstance(context)
+            val today = java.time.LocalDate.now()
 
-                val recordCount = db.routineRecordDao().getRecordCountForToday(routineId, today)
+            // 1. 오늘 날짜의 루틴 기록이 있는지 확인
+            val recordCount = db.routineRecordDao().getRecordCountForToday(routineId, today)
 
-                if (recordCount == 0) {
-                    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                    val routineTitle = intent.getStringExtra("ROUTINE_TITLE") ?: "루틴 시간입니다!"
+            // 2. 기록이 없을 때만 (0개일 때만) 알림을 표시
+            if (recordCount == 0) {
+                val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                val routineTitle = intent.getStringExtra("ROUTINE_TITLE") ?: "루틴 시간입니다!"
 
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        val channel = NotificationChannel(
-                            "routine_alarm_channel",
-                            "루틴 알림",
-                            NotificationManager.IMPORTANCE_HIGH
-                        ).apply {
-                            description = "설정한 루틴의 시작을 알립니다."
-                        }
-                        notificationManager.createNotificationChannel(channel)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    val channel = NotificationChannel(
+                        "routine_alarm_channel",
+                        "루틴 알림",
+                        NotificationManager.IMPORTANCE_HIGH
+                    ).apply {
+                        description = "설정한 루틴의 시작을 알립니다."
                     }
-
-                    val builder = NotificationCompat.Builder(context, "routine_alarm_channel")
-                        .setSmallIcon(R.drawable.ic_launcher_foreground)
-                        .setContentTitle(routineTitle)
-                        .setContentText("오늘의 루틴을 실천할 시간이에요! 💪")
-                        .setPriority(NotificationCompat.PRIORITY_HIGH)
-                        .setAutoCancel(true)
-
-                    notificationManager.notify(routineId, builder.build())
+                    notificationManager.createNotificationChannel(channel)
                 }
 
-                // 알림 표시 여부와 상관없이, 다음 알람은 항상 다시 설정
-                rescheduleNextAlarm(context, routineId)
+                val builder = NotificationCompat.Builder(context, "routine_alarm_channel")
+                    .setSmallIcon(R.drawable.ic_launcher_foreground)
+                    .setContentTitle(routineTitle)
+                    .setContentText("오늘의 루틴을 실천할 시간이에요! 💪")
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    .setAutoCancel(true)
 
-            } finally {
-                // 2. 모든 작업이 끝나면 반드시 finish()를 호출하여 리소스를 해제
-                pendingResult.finish()
+                notificationManager.notify(routineId, builder.build())
             }
+
+            // 3. 다음 알람을 다시 설정합니다.
+            rescheduleNextAlarm(context, routineId)
         }
     }
 
     private fun rescheduleNextAlarm(context: Context, routineId: Int) {
-        // 백그라운드에서 DB 작업 수행
         CoroutineScope(Dispatchers.IO).launch {
-            // AppDatabase 싱글턴 인스턴스를 통해 DAO에 접근
             val db = AppDatabase.getInstance(context)
-            val routine = db.routineDao().getRoutineByIdSuspend(routineId) // DAO에 추가한 suspend 함수 사용
+            // suspend 함수인 getRoutineByIdSuspend를 호출합니다.
+            val routine = db.routineDao().getRoutineByIdSuspend(routineId)
 
             if (routine != null && routine.isActive) {
                 val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -93,11 +86,21 @@ class AlarmReceiver : BroadcastReceiver() {
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
 
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    nextAlarmTime.timeInMillis,
-                    pendingIntent
-                )
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (alarmManager.canScheduleExactAlarms()) {
+                        alarmManager.setExactAndAllowWhileIdle(
+                            AlarmManager.RTC_WAKEUP,
+                            nextAlarmTime.timeInMillis,
+                            pendingIntent
+                        )
+                    }
+                } else {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        nextAlarmTime.timeInMillis,
+                        pendingIntent
+                    )
+                }
             }
         }
     }
@@ -112,7 +115,7 @@ class AlarmReceiver : BroadcastReceiver() {
             nextPossibleDay.add(Calendar.DAY_OF_YEAR, i)
             val dayOfWeek = nextPossibleDay.get(Calendar.DAY_OF_WEEK)
 
-            if (repeatOn.contains(intToWeekday(dayOfWeek))) {
+            if (repeatOn.any { it.name == intToWeekday(dayOfWeek).name }) {
                 val nextAlarmTime = Calendar.getInstance().apply {
                     time = nextPossibleDay.time // 기준 날짜를 i일 후로 설정
                     set(Calendar.HOUR_OF_DAY, startTime.hour)
