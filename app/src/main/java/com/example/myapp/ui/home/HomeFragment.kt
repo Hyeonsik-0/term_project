@@ -142,7 +142,9 @@ class HomeFragment : Fragment() {
         viewModel.routines.observe(viewLifecycleOwner) { routines ->
             adapter.submitList(routines)
         }
-
+        viewModel.todaysRecords.observe(viewLifecycleOwner) { records ->
+            adapter.updateCompletedRoutines(records)
+        }
         locationProvider = LocationProvider(requireActivity())
         weatherRepository = WeatherRepository(requireContext())
 

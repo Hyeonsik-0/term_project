@@ -1,14 +1,21 @@
 package com.example.myapp.ui.home
 
+import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.example.myapp.R
 import com.example.myapp.model.RoutineEntity
+import com.example.myapp.model.RoutineRecordEntity
+import com.example.myapp.model.Weekday
+import com.google.android.material.card.MaterialCardView
+import java.time.LocalDate
 
 class RoutineAdapter(
     private var routines: List<RoutineEntity>,
@@ -22,7 +29,7 @@ class RoutineAdapter(
         private const val TYPE_ITEM = 0
         private const val TYPE_ADD_BUTTON = 1
     }
-
+    private var completedRoutineIds: Set<Int> = emptySet()
     override fun getItemCount(): Int = routines.size + 1
 
     override fun getItemViewType(position: Int): Int {
@@ -59,6 +66,32 @@ class RoutineAdapter(
             editButton.setOnClickListener {
                 onEditClick(routine)
             }
+            val today = LocalDate.now().dayOfWeek
+            val todayWeekday = Weekday.valueOf(today.name)
+
+            val isToday = routine.repeatOn.contains(todayWeekday)
+            val isCompleted = completedRoutineIds.contains(routine.id)
+            val cardView = holder.itemView as? MaterialCardView
+            val statusIcon = holder.todayIndicator
+
+            if (isCompleted) {
+                // 1. 완료되었다면 체크 아이콘 표시
+                statusIcon.visibility = View.VISIBLE
+                statusIcon.setImageResource(R.drawable.ic_check_circle)
+            } else if (isToday) {
+                // 2. 오늘 할 일이지만 아직 미완료 상태면 별 아이콘 표시
+                statusIcon.visibility = View.VISIBLE
+                statusIcon.setImageResource(R.drawable.ic_today_star)
+            } else {
+                // 3. 그 외의 경우에는 아이콘 숨김
+                statusIcon.visibility = View.GONE
+            }
+//            if (isToday && !isCompleted) {
+//                cardView?.strokeWidth = 3 // 테두리 두께 (pixel 단위)
+//                cardView?.strokeColor = ContextCompat.getColor(holder.itemView.context, R.color.primary_blue) // 테두리 색상
+//            } else {
+//                cardView?.strokeWidth = 0
+//            }
 
         } else if (holder is AddButtonViewHolder) {
             holder.addButton.setOnClickListener {
@@ -69,6 +102,7 @@ class RoutineAdapter(
 
     class RoutineViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val titleText: TextView = itemView.findViewById(R.id.tv_routine_title)
+        val todayIndicator: ImageView = itemView.findViewById(R.id.iv_today_indicator)
     }
 
     class AddButtonViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -77,6 +111,10 @@ class RoutineAdapter(
 
     fun submitList(newRoutines: List<RoutineEntity>) {
         routines = newRoutines
+        notifyDataSetChanged()
+    }
+    fun updateCompletedRoutines(records: List<RoutineRecordEntity>) {
+        completedRoutineIds = records.map { it.routineId }.toSet()
         notifyDataSetChanged()
     }
 }

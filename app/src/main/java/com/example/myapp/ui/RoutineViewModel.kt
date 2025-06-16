@@ -38,7 +38,7 @@ class RoutineViewModel(application: Application) : AndroidViewModel(application)
     private val repository = RoutineRepository(routineDao, recordDao)
 
     val routines: LiveData<List<RoutineEntity>> = repository.getAllRoutines()
-
+    val todaysRecords: LiveData<List<RoutineRecordEntity>> = repository.getRecordsByDate(LocalDate.now())
     // 루틴을 추가하는 함수
     fun addRoutine(
         title: String,

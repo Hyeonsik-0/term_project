@@ -8,7 +8,7 @@ import java.time.LocalDate
 // 루틴 기록을 관리하는 DAO
 @Dao
 interface RoutineRecordDao {
-    @Query("SELECT * FROM routine_records WHERE routineId = :routineId ORDER BY date")
+    @Query("SELECT * FROM routine_records WHERE routineId = :routineId ORDER BY date DESC, id DESC")
     fun getRecordsForRoutine(routineId: Int): LiveData<List<RoutineRecordEntity>>
 
     @Query("SELECT * FROM routine_records WHERE date = :date")
