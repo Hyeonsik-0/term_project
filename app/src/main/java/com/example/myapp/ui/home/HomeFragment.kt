@@ -39,6 +39,7 @@ import com.example.myapp.weather.WeatherRepository
 import androidx.activity.result.ActivityResultLauncher
 import androidx.core.content.ContextCompat
 import android.Manifest
+import android.app.AlertDialog
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -56,6 +57,7 @@ import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Response
+import java.io.File
 import java.io.IOException
 
 class HomeFragment : Fragment() {
@@ -68,6 +70,18 @@ class HomeFragment : Fragment() {
 
     private var selectedPhotoUri: Uri? = null
     private var imagePreview: ImageView? = null
+    private var cameraImageUri: Uri? = null
+    private var cameraImageFile: File? = null
+    private val cameraLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success && cameraImageUri != null) {
+            selectedPhotoUri = cameraImageUri
+            imagePreview?.apply {
+                visibility = View.VISIBLE
+                setImageURI(cameraImageUri)
+            }
+            savePhotoToGallery(cameraImageFile)
+        }
+    }
 
     private val photoPickerLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -425,10 +439,23 @@ class HomeFragment : Fragment() {
             val btnSelectPhoto = dialogView.findViewById<Button>(R.id.btnSelectPhoto)
 
             btnSelectPhoto.setOnClickListener {
-                val intent = Intent(Intent.ACTION_PICK).apply {
-                    type = "image/*"
-                }
-                photoPickerLauncher.launch(intent)
+                val options = arrayOf("갤러리에서 선택", "카메라로 촬영")
+                AlertDialog.Builder(requireContext())
+                    .setTitle("사진 선택")
+                    .setItems(options) { _, which ->
+                        when (which) {
+                            0 -> { // 갤러리
+                                val intent = Intent(Intent.ACTION_PICK).apply { type = "image/*" }
+                                photoPickerLauncher.launch(intent)
+                            }
+                            1 -> { // 카메라
+                                cameraImageFile = FileUtils.createImageFile(requireContext())
+                                cameraImageUri = FileUtils.getUriForFile(requireContext(), cameraImageFile!!)
+                                cameraLauncher.launch(cameraImageUri)
+                            }
+                        }
+                    }
+                    .show()
             }
 
             // 기존 기록이 있다면 상세 내용을 미리 채워넣기
@@ -528,6 +555,23 @@ class HomeFragment : Fragment() {
         }
     }
 
+    // 갤러리에 찍은 사진을 저장하는 함수
+    private fun savePhotoToGallery(photoFile: File?) {
+        if (photoFile == null) return
+        val resolver = requireContext().contentResolver
+        val contentValues = android.content.ContentValues().apply {
+            put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, photoFile.name)
+            put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+        }
+        val uri = resolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+        uri?.let { outputUri ->
+            resolver.openOutputStream(outputUri)?.use { outputStream ->
+                java.io.FileInputStream(photoFile).use { inputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+            }
+        }
+    }
 
     override fun onDestroyView() {
         super.onDestroyView()

@@ -1,6 +1,7 @@
 package com.example.myapp.ui.routinedetail
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -27,6 +28,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 class RoutineDetailFragment : Fragment() {
     private var _binding: FragmentRoutineDetailBinding? = null
@@ -46,6 +48,18 @@ class RoutineDetailFragment : Fragment() {
                 visibility = View.VISIBLE
                 setImageURI(uri)
             }
+        }
+    }
+    private var cameraImageUri: Uri? = null
+    private var cameraImageFile: File? = null
+    private val cameraLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success && cameraImageUri != null) {
+            selectedPhotoUri = cameraImageUri
+            imagePreview?.apply {
+                visibility = View.VISIBLE
+                setImageURI(cameraImageUri)
+            }
+            savePhotoToGallery(cameraImageFile)
         }
     }
 
@@ -78,7 +92,8 @@ class RoutineDetailFragment : Fragment() {
         // 루틴 제목 설정
         viewModel.getRoutineById(routineId).observe(viewLifecycleOwner) { loadedRoutine ->
             loadedRoutine?.let {
-                (requireActivity() as? AppCompatActivity)?.supportActionBar?.title = it.title
+                (requireActivity() as? AppCompatActivity)?.supportActionBar?.title = ""
+                binding.routineTitleTextView.text = it.title
             }
         }
 
@@ -88,9 +103,7 @@ class RoutineDetailFragment : Fragment() {
 
         }
     }
-
-    // RoutineDetailFragment.kt 내 showRoutineRecordDialog 함수 수정 예시
-
+    // 루틴 기록 다이얼로그 표시
     private fun showRoutineRecordDialog(record: RoutineRecordEntity) {
         viewModel.getRoutineById(record.routineId).observe(viewLifecycleOwner) { routine ->
             val dialogView = layoutInflater.inflate(
@@ -116,8 +129,23 @@ class RoutineDetailFragment : Fragment() {
             }
 
             btnSelectPhoto.setOnClickListener {
-                val intent = Intent(Intent.ACTION_PICK).apply { type = "image/*" }
-                photoPickerLauncher.launch(intent)
+                val options = arrayOf("갤러리에서 선택", "카메라로 촬영")
+                AlertDialog.Builder(requireContext())
+                    .setTitle("사진 선택")
+                    .setItems(options) { _, which ->
+                        when (which) {
+                            0 -> { // 갤러리
+                                val intent = Intent(Intent.ACTION_PICK).apply { type = "image/*" }
+                                photoPickerLauncher.launch(intent)
+                            }
+                            1 -> { // 카메라
+                                cameraImageFile = FileUtils.createImageFile(requireContext())
+                                cameraImageUri = FileUtils.getUriForFile(requireContext(), cameraImageFile!!)
+                                cameraLauncher.launch(cameraImageUri)
+                            }
+                        }
+                    }
+                    .show()
             }
 
             val dialog = BottomSheetDialog(requireContext())
@@ -147,4 +175,23 @@ class RoutineDetailFragment : Fragment() {
             dialog.show()
         }
     }
+
+    // 갤러리에 찍은 사진을 저장하는 함수
+    private fun savePhotoToGallery(photoFile: File?) {
+        if (photoFile == null) return
+        val resolver = requireContext().contentResolver
+        val contentValues = android.content.ContentValues().apply {
+            put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, photoFile.name)
+            put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+        }
+        val uri = resolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+        uri?.let { outputUri ->
+            resolver.openOutputStream(outputUri)?.use { outputStream ->
+                java.io.FileInputStream(photoFile).use { inputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+            }
+        }
+    }
+
 }
