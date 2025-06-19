@@ -191,7 +191,7 @@ class AlarmReceiver : BroadcastReceiver() {
             val requestBody = json.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
 
             val request = Request.Builder()
-                .url("https://routine-server-uqzh.onrender.com/notify") // 에뮬레이터 기준
+                .url("https://routine-server-uqzh.onrender.com/notify")
                 .post(requestBody)
                 .build()
 

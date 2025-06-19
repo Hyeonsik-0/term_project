@@ -14,12 +14,12 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.net.toUri
 import com.example.myapp.ui.RoutineViewModel
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.bumptech.glide.Glide
 import com.example.myapp.R
 import com.example.myapp.databinding.FragmentRoutineDetailBinding
 import com.example.myapp.model.RoutineRecordEntity
@@ -46,7 +46,7 @@ class RoutineDetailFragment : Fragment() {
             selectedPhotoUri = uri
             imagePreview?.apply {
                 visibility = View.VISIBLE
-                setImageURI(uri)
+                Glide.with(context).load(uri).centerCrop().into(this)
             }
         }
     }
@@ -57,7 +57,7 @@ class RoutineDetailFragment : Fragment() {
             selectedPhotoUri = cameraImageUri
             imagePreview?.apply {
                 visibility = View.VISIBLE
-                setImageURI(cameraImageUri)
+                Glide.with(context).load(cameraImageUri).centerCrop().into(this)
             }
             savePhotoToGallery(cameraImageFile)
         }
@@ -79,6 +79,7 @@ class RoutineDetailFragment : Fragment() {
                 showRoutineRecordDialog(record)
             }
         )
+        binding.recyclerView.setHasFixedSize(true)
         binding.recyclerView.adapter  = recordAdapter
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
@@ -92,7 +93,6 @@ class RoutineDetailFragment : Fragment() {
         // 루틴 제목 설정
         viewModel.getRoutineById(routineId).observe(viewLifecycleOwner) { loadedRoutine ->
             loadedRoutine?.let {
-                (requireActivity() as? AppCompatActivity)?.supportActionBar?.title = ""
                 binding.routineTitleTextView.text = it.title
             }
         }
@@ -124,7 +124,7 @@ class RoutineDetailFragment : Fragment() {
                 selectedPhotoUri = record.photoUri.toUri()
                 imagePreview?.apply {
                     visibility = View.VISIBLE
-                    setImageURI(selectedPhotoUri)
+                    Glide.with(context).load(selectedPhotoUri).centerCrop().into(this)
                 }
             }
 

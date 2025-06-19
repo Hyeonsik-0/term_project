@@ -251,7 +251,7 @@ class RoutineViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun getSentiment(inputText: String): Int {
-        var interpreter = Interpreter(loadModelFile())
+        var interpreter = Interpreter(loadModelFile()) // koelectra_fixed.tflite
         var tokenizer = BertTokenizer(getApplication<Application>().applicationContext)
         val maxLen = 128
 
@@ -264,7 +264,7 @@ class RoutineViewModel(application: Application) : AndroidViewModel(application)
         inputIdBuffer.rewind()
         attentionBuffer.rewind()
         val tokenTypeBuffer = ByteBuffer.allocateDirect(128 * 4).order(ByteOrder.nativeOrder())
-        repeat(128) { tokenTypeBuffer.putInt(0) } // KoElectra는 single sentence → 전부 0
+        repeat(128) { tokenTypeBuffer.putInt(0) }
         tokenTypeBuffer.rewind()
 
         val inputs = arrayOf(attentionBuffer, inputIdBuffer, tokenTypeBuffer)

@@ -65,7 +65,7 @@ class HomeFragment : Fragment() {
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
     private val viewModel: RoutineViewModel by activityViewModels()
-    private val weatherViewModel: WeatherViewModel by activityViewModels()
+    private val homeViewModel: HomeViewModel by activityViewModels()
     private lateinit var adapter: RoutineAdapter
 
     private var selectedPhotoUri: Uri? = null
@@ -130,7 +130,7 @@ class HomeFragment : Fragment() {
             ActivityResultContracts.RequestPermission()
         ) { isGranted ->
             if (isGranted) {
-                weatherViewModel.loadWeather(locationProvider, weatherRepository)
+                homeViewModel.loadWeather(locationProvider, weatherRepository)
             } else {
                 Toast.makeText(requireContext(), "위치 권한이 필요합니다", Toast.LENGTH_SHORT).show()
             }
@@ -140,7 +140,7 @@ class HomeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         askNotificationPermission() // 권한 요청 함수 호출
-        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        val today = SimpleDateFormat("M월 d일 E요일", Locale.getDefault()).format(Date())
         binding.textToday.text = today
 
         adapter = RoutineAdapter(
@@ -162,29 +162,32 @@ class HomeFragment : Fragment() {
         locationProvider = LocationProvider(requireActivity())
         weatherRepository = WeatherRepository(requireContext())
 
-        // 날씨 LiveData observe
-        weatherViewModel.weatherInfo.observe(viewLifecycleOwner) { info ->
+        homeViewModel.weatherInfo.observe(viewLifecycleOwner) { info ->
             binding.weatherTextView.text = String.format(Locale.getDefault(), "%.1f°C \n %s", info.main.temp, info.name)
             Glide.with(this)
                 .load(info.weather[0].icon)
                 .into(binding.weatherIconImageView)
         }
-        weatherViewModel.error.observe(viewLifecycleOwner) { msg ->
+        homeViewModel.weatherError.observe(viewLifecycleOwner) { msg ->
             msg?.let {
                 Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
             }
         }
-
-        // 최초 1회만 loadWeather 호출
+        // 최초 1회만 loadWeather, loadQuote 호출
         if (ContextCompat.checkSelfPermission(
                 requireContext(),
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
         ) {
-            weatherViewModel.loadWeather(locationProvider, weatherRepository)
+            homeViewModel.loadWeather(locationProvider, weatherRepository)
         } else {
             permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
+
+        homeViewModel.quote.observe(viewLifecycleOwner) { message ->
+            binding.quoteTextView.text = message
+        }
+        homeViewModel.loadQuote()
     }
 
     // 루틴 수정
@@ -244,14 +247,14 @@ class HomeFragment : Fragment() {
                         it.toObject(Friend::class.java)
                     }.toMutableList()
 
-                    // 🔽 루틴에 저장된 uid들과 비교해 체크 상태 초기화
+                    // 루틴에 저장된 uid들과 비교해 체크 상태 초기화
                     routine.sharedWith.let { sharedUids ->
-                        friendList!!.forEach { friend ->
+                        friendList.forEach { friend ->
                             friend.isChecked = sharedUids.contains(friend.uid)
                         }
                     }
 
-                    friendAdapter = FriendSelectAdapter(friendList!!)
+                    friendAdapter = FriendSelectAdapter(friendList)
                     dialogBinding.recyclerViewFriendSelect.apply {
                         layoutManager = LinearLayoutManager(requireContext())
                         adapter = friendAdapter
@@ -284,7 +287,7 @@ class HomeFragment : Fragment() {
                 val updatedIsShared = dialogBinding.checkBoxShare.isChecked // 수정된 '공유 여부' 상태
 
                 val updatedSharedWith = if (updatedIsShared && friendList != null) {
-                    friendList!!.filter { it.isChecked }.map { it.uid }
+                    friendList.filter { it.isChecked }.map { it.uid }
                 } else emptyList()
 
                 // 기존 routine 객체에 변경된 값들을 복사하여 새로운 객체 생성
@@ -331,7 +334,7 @@ class HomeFragment : Fragment() {
                         it.toObject(Friend::class.java)
                     }.toMutableList()
 
-                    friendAdapter = FriendSelectAdapter(friendList!!)
+                    friendAdapter = FriendSelectAdapter(friendList)
                     dialogBinding.recyclerViewFriendSelect.apply {
                         layoutManager = LinearLayoutManager(requireContext())
                         adapter = friendAdapter
@@ -399,7 +402,7 @@ class HomeFragment : Fragment() {
                 // 공유 여부 & 선택된 UID 추출
                 val isShared = dialogBinding.checkBoxShare.isChecked
                 val sharedWith = if (isShared && friendList != null) {
-                    friendList!!.filter { it.isChecked }.map { it.uid }
+                    friendList.filter { it.isChecked }.map { it.uid }
                 } else {
                     emptyList()
                 }

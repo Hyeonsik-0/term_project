@@ -10,7 +10,7 @@
         android:id="@+id/textView_title_login"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="My Routine"
+        android:text="이지 루틴"
         style="@style/TextAppearance.MaterialComponents.Headline4"
         android:textStyle="bold"
         app:layout_constraintTop_toTopOf="parent"

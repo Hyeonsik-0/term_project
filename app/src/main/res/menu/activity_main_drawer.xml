@@ -12,6 +12,6 @@
             android:title="@string/menu_routine_calendar" />
         <item
             android:id="@+id/nav_friends"
-            android:title="친구 목록"/>
+            android:title="@string/menu_friends"/>
     </group>
 </menu>

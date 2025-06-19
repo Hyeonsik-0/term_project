@@ -7,6 +7,8 @@ import android.view.View
 import com.example.myapp.databinding.RoutineRecordItemBinding
 import com.example.myapp.model.RoutineRecordEntity
 import androidx.core.net.toUri
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 
 
 class RoutineRecordAdapter (
@@ -26,7 +28,11 @@ class RoutineRecordAdapter (
             binding.tvRecordDetail.text = record.detail ?: ""
             if (!record.photoUri.isNullOrEmpty()) {
                 binding.imageRecordPhoto.visibility = View.VISIBLE
-                binding.imageRecordPhoto.setImageURI(record.photoUri.toUri())
+                Glide.with(binding.imageRecordPhoto.context)
+                    .load(record.photoUri)
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .centerCrop()
+                    .into(binding.imageRecordPhoto)
             }
             else {
                 binding.imageRecordPhoto.visibility = View.GONE
