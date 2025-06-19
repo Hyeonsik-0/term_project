@@ -87,8 +87,9 @@ class SignUpActivity : AppCompatActivity() {
                         when {
                             response.isSuccessful -> {
                                 Toast.makeText(this@SignUpActivity, "회원가입 성공", Toast.LENGTH_SHORT).show()
-                                startActivity(Intent(this@SignUpActivity, LoginActivity::class.java))
-                                finish()
+                                val intent = Intent(this@SignUpActivity, LoginActivity::class.java)
+                                intent.putExtra("userId", userId)  // 가입한 ID 전달
+                                startActivity(intent)
                             }
                             response.code == 409 -> Toast.makeText(this@SignUpActivity, "이미 존재하는 ID입니다", Toast.LENGTH_SHORT).show()
                             else -> Toast.makeText(this@SignUpActivity, "서버 오류", Toast.LENGTH_SHORT).show()

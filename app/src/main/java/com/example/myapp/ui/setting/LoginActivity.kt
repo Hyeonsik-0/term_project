@@ -47,6 +47,12 @@ class LoginActivity : AppCompatActivity() {
         showPasswordCheckBox = findViewById(R.id.loginShowPasswordCheckBox)
         signUpButton = findViewById(R.id.signupButton)
 
+        // 인텐트로 전달된 userId가 있다면 자동 입력
+        val passedUserId = intent.getStringExtra("userId")
+        if (!passedUserId.isNullOrEmpty()) {
+            idInput.setText(passedUserId)
+        }
+
         // 비밀번호 표시 토글
         showPasswordCheckBox.setOnCheckedChangeListener { _, isChecked ->
             passwordInput.transformationMethod = if (isChecked)

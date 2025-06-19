@@ -145,7 +145,7 @@ class HomeFragment : Fragment() {
 
         adapter = RoutineAdapter(
             emptyList(),
-            onItemClick = { routine -> showRoutineDetails(routine) }, // 기존: showRoutineDetails -> 변경: showEditRoutineDialog
+            onItemClick = { routine -> showRoutineDetails(routine) },
             onAddClick = { showAddRoutineDialog() },
             onStartClick = { routine -> showRoutineRecordDialog(routine) },
             onEditClick = { routine -> showEditRoutineDialog(routine) }
@@ -245,7 +245,7 @@ class HomeFragment : Fragment() {
                     }.toMutableList()
 
                     // 🔽 루틴에 저장된 uid들과 비교해 체크 상태 초기화
-                    routine.sharedWith?.let { sharedUids ->
+                    routine.sharedWith.let { sharedUids ->
                         friendList!!.forEach { friend ->
                             friend.isChecked = sharedUids.contains(friend.uid)
                         }
